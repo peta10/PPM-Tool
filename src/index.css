@@ -1,0 +1,289 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mobile-first styles */
+@layer base {
+  html {
+    @apply text-base;
+  }
+  
+  /* Mobile styles (below 1024px) */
+  @media (max-width: 1023px) {
+    html {
+      @apply touch-auto;
+    }
+  }
+}
+
+/* Drag and drop styles */
+.sortable-ghost {
+  opacity: 0.5;
+  background: #f3f4f6;
+  border-radius: 0.5rem;
+}
+
+.sortable-drag {
+  opacity: 0.9;
+  cursor: grabbing !important;
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (min-width: 1024px) {
+  /* Prevent text selection during drag on desktop only */
+  .dragging * {
+    user-select: none !important;
+    -webkit-user-select: none !important;
+  }
+}
+
+/* Prevent scrolling on body when fullscreen mode is active */
+body.fullscreen-active {
+  overflow: hidden;
+}
+
+/* Fullscreen container */
+.fullscreen-container {
+  @apply fixed inset-0 bg-white;
+  z-index: 50;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Main page section scrolling */
+.section-scroll {
+  @apply overflow-y-auto;
+  height: 600px;
+  min-height: 600px;
+  max-height: 600px;
+  flex-shrink: 0;
+}
+
+/* Override for recommendations section */
+#recommendations-section .section-scroll {
+  height: 700px;
+  min-height: 700px;
+  max-height: 700px;
+}
+
+@media (max-width: 1023px) {
+  .section-scroll {
+    height: auto;
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+  
+  #recommendations-section .section-scroll {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+  
+  .fullscreen-container {
+    @apply fixed inset-0 bg-white flex flex-col;
+    height: 100%;
+  }
+}
+
+/* Custom scrollbar styling */
+.section-scroll::-webkit-scrollbar {
+  -webkit-appearance: none;
+  width: 6px;
+  height: 6px;
+}
+
+.section-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.section-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Thin scrollbar variant */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+  background-clip: padding-box;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
+}
+
+.section-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.8);
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-none {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}
+
+/* Ensure scrollbars are always visible on touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .section-scroll {
+    overflow-y: scroll !important;
+  }
+  
+  .section-scroll::-webkit-scrollbar-thumb {
+    background-color: rgba(156, 163, 175, 0.5);
+    border: 1.5px solid transparent;
+  }
+}
+
+@keyframes highlightPulse {
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+.highlight-pulse {
+  animation: highlightPulse 2s infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Mobile navigation styles */
+@media (max-width: 1023px) {
+  .mobile-nav {
+    margin-left: auto;
+  }
+  
+  .fullscreen-container {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    height: 100vh;
+    width: 100vw;
+    background: white;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Mobile fullscreen header */
+.mobile-fullscreen-header {
+  @apply p-4 bg-white border-b;
+}
+
+.mobile-fullscreen-header h1 {
+  @apply text-xl font-bold text-gray-900;
+}
+
+.mobile-fullscreen-header p {
+  @apply text-sm text-gray-500 mt-1;
+}
+
+/* Settings Menu Overlay */
+.settings-overlay {
+  @apply fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto;
+  padding: 5vh 1rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-content {
+  @apply bg-white rounded-lg shadow-xl w-full max-w-2xl relative z-[101];
+  margin-bottom: 5vh;
+}
+
+/* Mobile viewport adjustments */
+@media (max-width: 1023px) {
+  .fullscreen-container {
+    height: 100dvh;
+    min-height: -webkit-fill-available;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .settings-overlay {
+    height: 100dvh;
+    min-height: -webkit-fill-available;
+    padding-top: env(safe-area-inset-top, 20px);
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  /* Ensure content is scrollable on mobile */
+  .mobile-scroll {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+
+  /* iOS-specific fixes */
+  .ios-momentum-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* Fix for iOS address bar */
+  @supports (-webkit-touch-callout: none) {
+    .fullscreen-container,
+    .settings-overlay {
+      height: -webkit-fill-available;
+    }
+  }
+
+  /* Prevent elastic scrolling on iOS */
+  html, body {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* Main content scroll container */
+  .mobile-content-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+  }
+
+  /* iOS safe area padding for bottom banner */
+  .ios-safe-area-bottom {
+    padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 1rem);
+  }
+}
