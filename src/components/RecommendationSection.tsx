@@ -1,7 +1,6 @@
 import React from 'react';
 import { Tool, Criterion } from '../types';
-import { RecommendationTooltip } from './RecommendationTooltip';
-import { Award, Maximize2, Minimize2, LineChart, ChevronDown, ChevronUp, AlertTriangle, ArrowRight, Download, Boxes } from 'lucide-react';
+import { Award, Maximize2, Minimize2, ChevronDown, ChevronUp, AlertTriangle, ArrowRight } from 'lucide-react';
 import { useFullscreen } from '../contexts/FullscreenContext';
 import { FullscreenNavigation } from './FullscreenNavigation';
 import { Header } from './Header';
@@ -16,7 +15,6 @@ interface RecommendationSectionProps {
 export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
   selectedTools,
   selectedCriteria,
-  onExportPDF,
 }) => {
   const { fullscreenView, toggleFullscreen, isMobile } = useFullscreen();
   const isFullscreen = fullscreenView === 'recommendations';
@@ -35,7 +33,6 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
 
   const calculateScore = (tool: Tool) => {
     let totalScore = 0;
-    let meetsAllCriteria = true;
 
     selectedCriteria.forEach((criterion) => {
       // Check if the criterion exists in the tool's criteria array
@@ -47,10 +44,7 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
       const toolRating = criterionData?.ranking || tool.ratings[criterion.id] || 0;
       const userRating = criterion.userRating;
 
-      // Check if tool meets or exceeds requirement
-      if (toolRating < userRating) {
-        meetsAllCriteria = false;
-      }
+      // Calculate score based on tool vs user rating
 
       // Calculate score based on how well tool meets requirements
       if (toolRating >= userRating) {
@@ -64,20 +58,18 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
       }
     });
 
-    // Calculate average score
-    let finalScore = totalScore / selectedCriteria.length;
-
-    // If tool meets or exceeds ALL criteria, it gets a perfect 10
-    if (meetsAllCriteria) {
-      finalScore = 10;
-    }
+    // Average the score across all criteria and scale to 10
+    const finalScore = selectedCriteria.length > 0 
+      ? (totalScore / selectedCriteria.length) 
+      : 0;
 
     return finalScore;
   };
 
-  const sortedTools = [...selectedTools].sort(
-    (a, b) => calculateScore(b) - calculateScore(a)
-  );
+  // Memoize sorted tools for better performance and smooth reordering
+  const sortedTools = React.useMemo(() => {
+    return [...selectedTools].sort((a, b) => calculateScore(b) - calculateScore(a));
+  }, [selectedTools, selectedCriteria]);
 
   const content = (
     <>
@@ -169,8 +161,11 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
                 className="w-full text-left"
               >
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="flex items-center space-x-2">
                     <h3 className="font-semibold text-lg">{tool.name}</h3>
+                    {index === 0 && <span className="text-2xl" title="1st Place">🥇</span>}
+                    {index === 1 && <span className="text-2xl" title="2nd Place">🥈</span>}
+                    {index === 2 && <span className="text-2xl" title="3rd Place">🥉</span>}
                   </div>
                   <div className="flex items-center space-x-4">
                     <div className="text-right">
@@ -417,16 +412,13 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
                 </h3>
                 <div className="mt-1.5">
                   <a
-                    href="https://airtable.com/appsuQtcklOHDbcb6/pag1xGs1ZBdeNccC9/form"
+                    href="https://app.onecal.io/b/matt-wagner/schedule-a-meeting-with-matt"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-left w-full lg:w-auto inline-flex items-center text-alpine-blue-500 hover:text-alpine-blue-700 text-sm font-medium group"
+                    className="inline-flex items-center justify-center px-4 py-2 bg-alpine-blue-500 text-white rounded-lg hover:bg-alpine-blue-600 transition-colors text-sm font-medium shadow-sm"
                   >
-                    <span className="mr-1">
-                      Learn more about our evaluation service and get a
-                      comprehensive analysis from our experts
-                    </span>
-                    <ArrowRight className="w-4 h-4 flex-shrink-0 transition-transform group-hover:translate-x-0.5" />
+                    <span className="mr-2">Book A Call</span>
+                    <ArrowRight className="w-4 h-4 flex-shrink-0" />
                   </a>
                 </div>
               </div>
@@ -446,10 +438,13 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
                         className="w-full text-left"
                       >
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex items-center space-x-2">
                             <h3 className="font-semibold text-lg">
                               {tool.name}
                             </h3>
+                            {index === 0 && <span className="text-2xl" title="1st Place">🥇</span>}
+                            {index === 1 && <span className="text-2xl" title="2nd Place">🥈</span>}
+                            {index === 2 && <span className="text-2xl" title="3rd Place">🥉</span>}
                           </div>
                           <div className="flex items-center space-x-4">
                             <div className="text-right">

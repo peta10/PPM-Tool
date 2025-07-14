@@ -50,25 +50,31 @@ export const FilterSystem: React.FC<FilterSystemProps> = ({
   onToggleFilterMode,
 }) => {
   const isFieldIncomplete = (condition: FilterCondition, fieldName: keyof FilterCondition) => {
-    if (!incompleteFilterId) return false;
+    if (!incompleteFilterId || incompleteFilterId !== 'all') return false;
+    
+    // Only highlight if the user has started filling out the filter
+    const hasStartedFilter = condition.type || condition.value;
+    if (!hasStartedFilter) return false;
     
     switch (fieldName) {
       case 'type':
-        return !condition.type;
+        return false; // Don't highlight type field, it's the starting point
       case 'value':
         return condition.type && !condition.value;
       case 'operator':
-        return condition.type === 'Criteria' && !condition.operator;
+        return condition.type === 'Criteria' && condition.value && !condition.operator;
       case 'rating':
-        return condition.type === 'Criteria' && condition.operator && condition.rating === undefined;
+        return condition.type === 'Criteria' && condition.value && condition.operator && condition.rating === undefined;
       default:
         return false;
     }
   };
 
   const isConditionIncomplete = (condition: FilterCondition) => {
-    if (!condition.type) return true;
-    if (!condition.value) return true;
+    // Only consider incomplete if user has started but not finished
+    if (!condition.type && !condition.value) return false; // Completely empty is fine
+    if (!condition.type) return true; // Has value but no type
+    if (!condition.value) return true; // Has type but no value
     if (condition.type === 'Criteria') {
       return !condition.operator || condition.rating === undefined;
     }

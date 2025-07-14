@@ -1,19 +1,8 @@
-import React, { useState } from 'react';
-import {
-  Chart as ChartJS,
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Radar } from 'react-chartjs-2';
+import React, { useState, Suspense } from 'react';
 import { Tool, Criterion } from '../types';
 import {
   Maximize2,
   Minimize2,
-  Eye,
   EyeOff,
   LineChart,
   ChevronDown,
@@ -32,14 +21,8 @@ interface ComparisonChartProps {
   onExportPDF?: () => void;
 }
 
-ChartJS.register(
-  RadialLinearScale,
-  PointElement,
-  LineElement,
-  Filler,
-  Tooltip,
-  Legend
-);
+// Lazy load the radar chart component
+const LazyRadarChart = React.lazy(() => import('./comparison/ChartContainer'));
 
 export const ComparisonChart: React.FC<ComparisonChartProps> = ({
   selectedTools,
@@ -452,7 +435,9 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
         })}
       </div>
       <div className="w-full h-[400px] pt-8">
-        <Radar data={data} options={options} />
+        <Suspense fallback={<div>Loading Chart...</div>}>
+          <LazyRadarChart data={data} options={options} />
+        </Suspense>
       </div>
     </>
   );
@@ -613,7 +598,9 @@ export const ComparisonChart: React.FC<ComparisonChartProps> = ({
               })}
             </div>
             <div className="flex-1 p-4 sm:p-6 min-h-[600px]">
-              <Radar data={data} options={options} />
+              <Suspense fallback={<div>Loading Chart...</div>}>
+                <LazyRadarChart data={data} options={options} />
+              </Suspense>
             </div>
           </div>
         </div>

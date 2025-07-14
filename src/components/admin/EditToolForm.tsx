@@ -3,6 +3,7 @@ import { X, AlertCircle, Loader } from 'lucide-react';
 import { Tool, Criterion } from '../../types';
 import { useClickOutside } from '../../hooks/useClickOutside';
 import { supabase } from '../../lib/supabase';
+import { Slider } from '../ui/slider';
 
 interface EditToolFormProps {
   tool: Tool;
@@ -459,20 +460,20 @@ export const EditToolForm: React.FC<EditToolFormProps> = ({
                           {criteriaRatings[criterion.id] || 0}/5
                         </span>
                       </div>
-                      <input
-                        type="range"
-                        min="1"
-                        max="5"
-                        value={criteriaRatings[criterion.id] || 1}
-                        onChange={(e) => {
-                          const newValue = parseInt(e.target.value);
+                      <Slider
+                        value={[criteriaRatings[criterion.id] || 1]}
+                        onValueChange={(values) => {
+                          const newValue = values[0];
                           console.log(`Setting ${criterion.name} rating to ${newValue}`);
                           setCriteriaRatings(prev => ({
                             ...prev,
                             [criterion.id]: newValue
                           }));
                         }}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-alpine-blue-500"
+                        min={1}
+                        max={5}
+                        step={1}
+                        className="w-full"
                       />
                       <textarea
                         value={criteriaDescriptions[criterion.id] || ''}

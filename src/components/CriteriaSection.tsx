@@ -10,6 +10,7 @@ import { FullscreenNavigation } from './FullscreenNavigation';
 import { Header } from './Header';
 import { StepsSection } from './StepsSection';
 import { GuidedRankingForm } from './GuidedRankingForm';
+import { Slider } from './ui/slider';
 
 interface CriteriaSectionProps {
   criteria: Criterion[];
@@ -110,13 +111,13 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
       </div>
       
       <div className="flex items-center space-x-4">
-        <input
-          type="range"
-          min="1"
-          max="5"
-          value={criterion.userRating}
-          onChange={(e) => handleRatingChange(criterion.id, parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-alpine-blue-500"
+        <Slider
+          value={[criterion.userRating]}
+          onValueChange={(values) => handleRatingChange(criterion.id, values[0])}
+          min={1}
+          max={5}
+          step={1}
+          className="w-full"
         />
         <span className={`w-8 text-center font-medium ${
           criterion.userRating >= 4 ? 'text-green-600' :  // Critical requirement (4-5)

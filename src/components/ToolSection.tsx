@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Tool, Criterion } from '../types';
-import { Layout, Maximize2, Minimize2, Settings, X, Filter, AlertCircle } from 'lucide-react';
+import { Layout, Maximize2, Minimize2, Settings, X } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
-import { FilterSystem, FilterCondition, FilterType } from './filters/FilterSystem';
-import { ToolCard } from './ToolCard';
+import { FilterSystem, FilterCondition } from './filters/FilterSystem';
+import { EnhancedCompactToolCard } from './EnhancedCompactToolCard';
 import { RemovedToolsMenu } from './RemovedToolsMenu';
 import { DraggableList } from './DraggableList';
 import { DraggableItem } from './DraggableItem';
@@ -13,7 +13,6 @@ import { FullscreenNavigation } from './FullscreenNavigation';
 import { Header } from './Header';
 import { StepsSection } from './StepsSection';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { supabase } from '../lib/supabase';
 
 interface ToolSectionProps {
   tools: Tool[];
@@ -32,6 +31,85 @@ interface ToolSectionProps {
   onRestoreAll: () => void;
 }
 
+// Calculate match score function
+const calculateMatchScore = (tool: Tool, criteria: Criterion[]): number => {
+  let totalScore = 0;
+  let meetsAllCriteria = true;
+
+  criteria.forEach((criterion) => {
+    // Get tool rating using the same logic as CompactToolCard
+    let toolRating = 0;
+    
+    try {
+      if (Array.isArray(tool.criteria)) {
+        const criterionDataById = tool.criteria.find(c => c.id === criterion.id);
+        if (criterionDataById && typeof criterionDataById.ranking === 'number') {
+          toolRating = criterionDataById.ranking;
+        } else {
+          const criterionDataByName = tool.criteria.find(c => c.name === criterion.name);
+          if (criterionDataByName && typeof criterionDataByName.ranking === 'number') {
+            toolRating = criterionDataByName.ranking;
+          }
+        }
+      }
+
+      if (toolRating === 0 && tool.ratings && typeof tool.ratings[criterion.id] === 'number') {
+        toolRating = tool.ratings[criterion.id];
+      }
+      
+      if (toolRating === 0) {
+        const criterionMappings: Record<string, string[]> = {
+          'scalability': ['Scalability', 'scalability'],
+          'integrations': ['Integrations & Extensibility', 'integrations', 'Integrations'],
+          'easeOfUse': ['Ease of Use', 'easeOfUse', 'ease_of_use', 'ease-of-use'],
+          'flexibility': ['Flexibility & Customization', 'flexibility', 'customization'],
+          'ppmFeatures': ['Project Portfolio Management', 'ppmFeatures', 'ppm_features', 'ppm'],
+          'reporting': ['Reporting & Analytics', 'reporting', 'analytics'],
+          'security': ['Security & Compliance', 'security', 'compliance']
+        };
+        
+        const possibleKeys = criterionMappings[criterion.id] || [criterion.name, criterion.id];
+        
+        for (const key of possibleKeys) {
+          if (tool.ratings && typeof tool.ratings[key] === 'number') {
+            toolRating = tool.ratings[key];
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error getting rating for criterion ${criterion.name}:`, error);
+      toolRating = 0;
+    }
+
+    const userRating = criterion.userRating;
+
+    // Check if tool meets or exceeds requirement
+    if (toolRating < userRating) {
+      meetsAllCriteria = false;
+    }
+
+    // Calculate score based on how well tool meets requirements
+    if (toolRating >= userRating) {
+      const excess = Math.min(toolRating - userRating, 2);
+      totalScore += 8 + excess;
+    } else {
+      const shortfall = userRating - toolRating;
+      totalScore += Math.max(0, 7 - shortfall * 2);
+    }
+  });
+
+  // Calculate average score
+  let finalScore = totalScore / criteria.length;
+
+  // If tool meets or exceeds ALL criteria, it gets a perfect 10
+  if (meetsAllCriteria) {
+    finalScore = 10;
+  }
+
+  return finalScore;
+};
+
 export const ToolSection: React.FC<ToolSectionProps> = ({
   tools,
   selectedTools,
@@ -44,7 +122,6 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
   onUpdateFilterCondition,
   onToggleFilterMode,
   onToolSelect,
-  onToolRemove,
   onToolsReorder,
   onRestoreAll
 }) => {
@@ -52,28 +129,38 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
   const isFullscreen = fullscreenView === 'tools';
   const [instructionsCollapsed, setInstructionsCollapsed] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [activeMethodologies, setActiveMethodologies] = useState<Set<string>>(new Set());
   const [incompleteFilterId, setIncompleteFilterId] = useState<string | null>(null);
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const settingsRef = React.useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
+  
   const filteredTools = filterTools(selectedTools, filterConditions, filterMode);
 
+  // Memoize match scores for performance
+  const toolMatchScores = React.useMemo(() => {
+    const scores = new Map<string, number>();
+    filteredTools.forEach(tool => {
+      scores.set(tool.id, calculateMatchScore(tool, selectedCriteria));
+    });
+    return scores;
+  }, [filteredTools, selectedCriteria]);
+
+  // Sort tools by match score (highest first)
+  const sortedTools = React.useMemo(() => {
+    return [...filteredTools].sort((a, b) => {
+      const scoreA = toolMatchScores.get(a.id) || 0;
+      const scoreB = toolMatchScores.get(b.id) || 0;
+      return scoreB - scoreA;
+    });
+  }, [filteredTools, toolMatchScores]);
+
   const handleMethodologyClick = (methodology: string) => {
-    // Check if this methodology is already in the filter conditions
     const existingCondition = filterConditions.find(
       c => c.type === 'Methodology' && c.value === methodology
     );
 
     if (existingCondition) {
-      // If it exists, remove it
-      const conditionToRemove = filterConditions.find(
-        c => c.type === 'Methodology' && c.value === methodology
-      );
-      if (conditionToRemove) {
-        onRemoveFilterCondition(conditionToRemove.id);
-      }
+      onRemoveFilterCondition(existingCondition.id);
     } else {
-      // If it doesn't exist, add it
       onAddFilterCondition();
       const newCondition = filterConditions[filterConditions.length - 1];
       if (newCondition) {
@@ -83,6 +170,16 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
         });
       }
     }
+  };
+
+  const handleToggleExpand = (toolId: string) => {
+    const newExpanded = new Set(expandedCards);
+    if (newExpanded.has(toolId)) {
+      newExpanded.delete(toolId);
+    } else {
+      newExpanded.add(toolId);
+    }
+    setExpandedCards(newExpanded);
   };
   
   const filteredOutTools = React.useMemo(() => {
@@ -98,18 +195,36 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
   });
 
   const handleSettingsClose = () => {
-    const incompleteFilters = filterConditions.filter(condition => {
-      if (!condition.type || !condition.value) return true;
+    // Only prevent closing if there are truly problematic incomplete filters
+    const problematicFilters = filterConditions.filter(condition => {
+      // Only consider it problematic if type is set but other required fields are missing
+      if (!condition.type) return false; // Empty filters are fine, will be ignored
       if (condition.type === 'Criteria') {
+        // For criteria filters, we need all three: value, operator, and rating
         return !condition.value || !condition.operator || condition.rating === undefined;
       }
-      return false;
+      // For methodology/function filters, we just need the value
+      return !condition.value;
     });
 
-    if (incompleteFilters.length > 0) {
+    if (problematicFilters.length > 0) {
       setIncompleteFilterId('all');
       setTimeout(() => setIncompleteFilterId(null), 3000);
       return;
+    }
+
+    // Auto-remove completely empty filters when closing
+    const cleanedFilters = filterConditions.filter(condition => 
+      condition.type && condition.value
+    );
+    
+    if (cleanedFilters.length !== filterConditions.length) {
+      // Remove empty filters
+      const emptyFilterIds = filterConditions
+        .filter(condition => !condition.type || !condition.value)
+        .map(condition => condition.id);
+      
+      emptyFilterIds.forEach(id => onRemoveFilterCondition(id));
     }
 
     setIsSettingsOpen(false);
@@ -117,20 +232,15 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
 
   const showRemovedToolsMenu = removedTools.length > 0;
 
-  React.useEffect(() => {
-    const methodologyFilters = new Set(
-      filterConditions.filter(c => c.type === 'Methodology' && c.value).map(c => c.value)
-    );
-    setActiveMethodologies(methodologyFilters);
-  }, [filterConditions]);
-
   const renderTool = (tool: Tool) => (
     <DraggableItem key={tool.id} id={tool.id}>
       <div className="pl-8">
-        <ToolCard
+        <EnhancedCompactToolCard
           tool={tool}
-          selectedTools={selectedTools}
-          onRemove={onToolRemove}
+          selectedCriteria={selectedCriteria}
+          matchScore={toolMatchScores.get(tool.id) || 0}
+          isExpanded={expandedCards.has(tool.id)}
+          onToggleExpand={() => handleToggleExpand(tool.id)}
         />
       </div>
     </DraggableItem>
@@ -158,9 +268,9 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
             <div className="flex items-center">
               <Layout className="w-6 h-6 mr-2 text-alpine-blue-500" />
               <div className="flex items-center">
-                <h2 className="text-xl font-bold">Tools</h2>
+                <h2 className="text-xl font-bold">Tools & Recommendations</h2>
                 <span className="hidden lg:block ml-2 text-sm text-gray-500">
-                  {filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'}
+                  {sortedTools.length} {sortedTools.length === 1 ? 'tool' : 'tools'}
                 </span>
               </div>
             </div>
@@ -209,7 +319,7 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
                       <div>
                         <h3 className="font-medium">Tool Settings</h3>
                         <p className="text-sm text-gray-500 mt-0.5">
-                          {filteredTools.length} {filteredTools.length === 1 ? 'tool' : 'tools'} visible
+                          {sortedTools.length} {sortedTools.length === 1 ? 'tool' : 'tools'} visible
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -319,14 +429,7 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
           </div>
         </div>
 
-        {error && (
-          <div className="px-6 py-4 bg-red-50 border-b">
-            <div className="flex items-center text-red-600">
-              <AlertCircle className="w-5 h-5 mr-2" />
-              <p className="text-sm">{error}</p>
-            </div>
-          </div>
-        )}
+
 
         <div className="flex-shrink-0 border-b bg-gray-50">
           <div className="px-6">
@@ -346,24 +449,28 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
                 <div className="py-3">
                   <div className="space-y-3 text-sm text-gray-600">
                     <p>
-                      Compare and evaluate tools based on your specific needs:
+                      Browse tools sorted by match score based on your criteria rankings:
                     </p>
                     <ul className="space-y-2 pl-4">
+                      <li className="flex items-start">
+                        <span className="font-medium text-gray-900 mr-2">Match Scores:</span>
+                        <span>Tools are ranked by how well they meet your requirements (10/10 = perfect match)</span>
+                      </li>
                       <li className="flex items-start">
                         <span className="font-medium text-gray-900 mr-2">Methodology:</span>
                         <span>Use Waterfall/Agile buttons to quickly filter tools by development approach</span>
                       </li>
                       <li className="flex items-start">
+                        <span className="font-medium text-gray-900 mr-2">Details:</span>
+                        <span>Click "View detailed breakdown" to see how each tool scores against your criteria</span>
+                      </li>
+                      <li className="flex items-start">
                         <span className="font-medium text-gray-900 mr-2">Filters:</span>
                         <span>Access advanced filters through settings (⚙️) to refine by function, criteria scores, and more</span>
                       </li>
-                      <li className="flex items-start">
-                        <span className="font-medium text-gray-900 mr-2">Tool Cards:</span>
-                        <span>Expand cards to view detailed ratings and feature explanations</span>
-                      </li>
                     </ul>
                     <p className="text-xs text-gray-500 italic">
-                      Removed tools can be restored through the settings menu
+                      Tools are automatically sorted with the best matches at the top
                     </p>
                   </div>
                 </div>
@@ -375,7 +482,7 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
         <div className={`p-6 ${!isFullscreen && 'section-scroll'}`}>
           <div className="pt-6 space-y-4">
             <DraggableList
-              items={selectedTools}
+              items={sortedTools}
               onReorder={onToolsReorder}
               renderItem={renderTool}
               getItemId={(tool) => tool.id}

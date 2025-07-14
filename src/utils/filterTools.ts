@@ -28,9 +28,9 @@ export const filterTools = (
           return tool.methodologies?.includes(condition.value) || false;
         
         case 'Function':
-          return tool.functions.includes(condition.value);
+          return tool.functions?.includes(condition.value) || false;
         
-        case 'Criteria':
+        case 'Criteria': {
           const rating = tool.ratings[condition.value] || 0;
           const targetRating = condition.rating || 0;
           
@@ -42,6 +42,7 @@ export const filterTools = (
             case '<': return rating < targetRating;
             default: return false;
           }
+        }
         
         default:
           return true;
