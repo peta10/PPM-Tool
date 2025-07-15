@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Tool, Criterion } from '../types';
-import { Layout, Maximize2, Minimize2, Settings, X } from 'lucide-react';
+import { Maximize2, Minimize2, Settings, X, Award } from 'lucide-react';
 import { useClickOutside } from '../hooks/useClickOutside';
 import { FilterSystem, FilterCondition } from './filters/FilterSystem';
 import { EnhancedCompactToolCard } from './EnhancedCompactToolCard';
@@ -13,6 +13,7 @@ import { FullscreenNavigation } from './FullscreenNavigation';
 import { Header } from './Header';
 import { StepsSection } from './StepsSection';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+
 
 interface ToolSectionProps {
   tools: Tool[];
@@ -131,6 +132,7 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [incompleteFilterId, setIncompleteFilterId] = useState<string | null>(null);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
   const settingsRef = React.useRef<HTMLDivElement>(null);
   
   const filteredTools = filterTools(selectedTools, filterConditions, filterMode);
@@ -152,25 +154,6 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
       return scoreB - scoreA;
     });
   }, [filteredTools, toolMatchScores]);
-
-  const handleMethodologyClick = (methodology: string) => {
-    const existingCondition = filterConditions.find(
-      c => c.type === 'Methodology' && c.value === methodology
-    );
-
-    if (existingCondition) {
-      onRemoveFilterCondition(existingCondition.id);
-    } else {
-      onAddFilterCondition();
-      const newCondition = filterConditions[filterConditions.length - 1];
-      if (newCondition) {
-        onUpdateFilterCondition(newCondition.id, {
-          type: 'Methodology',
-          value: methodology
-        });
-      }
-    }
-  };
 
   const handleToggleExpand = (toolId: string) => {
     const newExpanded = new Set(expandedCards);
@@ -263,53 +246,29 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between p-6 pb-4 border-b">
-          <div className="flex items-center">
+        {/* Fixed Header Section */}
+        <div className="flex items-center justify-between p-6 pb-4 border-b bg-alpine-blue-50">
+          <div className="flex items-center space-x-3">
             <div className="flex items-center">
-              <Layout className="w-6 h-6 mr-2 text-alpine-blue-500" />
+              <Award className="w-6 h-6 mr-2 text-alpine-blue-500" />
               <div className="flex items-center">
-                <h2 className="text-xl font-bold">Tools & Recommendations</h2>
-                <span className="hidden lg:block ml-2 text-sm text-gray-500">
+                <h2 className="text-xl font-bold text-midnight-800">Tools & Recommendations</h2>
+                <span className="hidden lg:block ml-2 text-sm text-midnight-600">
                   {sortedTools.length} {sortedTools.length === 1 ? 'tool' : 'tools'}
                 </span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => handleMethodologyClick('Waterfall')}
-              className={`px-3 py-1 text-sm rounded-full transition-all duration-150 focus:outline-none border shadow-sm ${
-                filterConditions.some(c => c.type === 'Methodology' && c.value === 'Waterfall')
-                  ? 'bg-alpine-blue-500 text-white hover:bg-alpine-blue-600 border-transparent'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
-              }`}
-            >
-              Waterfall
-            </button>
-            <button
-              onClick={() => handleMethodologyClick('Agile')}
-              className={`px-3 py-1 text-sm rounded-full transition-all duration-150 focus:outline-none border shadow-sm ${
-                filterConditions.some(c => c.type === 'Methodology' && c.value === 'Agile')
-                  ? 'bg-alpine-blue-500 text-white hover:bg-alpine-blue-600 border-transparent'
-                  : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
-              }`}
-            >
-              Agile
-            </button>
-          </div>
-          <div className="flex items-center space-x-1">
+
+          {/* Control buttons */}
+          <div className="flex items-center space-x-2">
             <div className="relative" ref={settingsRef}>
               <button
-                onClick={() => {
-                  if (isSettingsOpen) {
-                    handleSettingsClose();
-                  } else {
-                    setIsSettingsOpen(true);
-                  }
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className="p-2 hover:bg-alpine-blue-100 rounded-lg"
+                aria-label="Filter settings"
               >
-                <Settings className="w-5 h-5 text-gray-600" />
+                <Settings className="w-5 h-5 text-alpine-blue-600" />
               </button>
               {isSettingsOpen && (
                 <div className="settings-overlay">
@@ -417,12 +376,12 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
             {!isMobile && (
               <button
                 onClick={() => toggleFullscreen('tools')}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-alpine-blue-100 rounded-lg transition-colors"
               >
                 {isFullscreen ? (
-                  <Minimize2 className="w-5 h-5 text-gray-600" />
+                  <Minimize2 className="w-5 h-5 text-alpine-blue-600" />
                 ) : (
-                  <Maximize2 className="w-5 h-5 text-gray-600" />
+                  <Maximize2 className="w-5 h-5 text-alpine-blue-600" />
                 )}
               </button>
             )}
@@ -431,6 +390,7 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
 
 
 
+        {/* Instructions Section */}
         <div className="flex-shrink-0 border-b bg-gray-50">
           <div className="px-6">
             <div className="relative">
@@ -465,6 +425,10 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
                         <span>Click "View detailed breakdown" to see how each tool scores against your criteria</span>
                       </li>
                       <li className="flex items-start">
+                        <span className="font-medium text-gray-900 mr-2">Export:</span>
+                        <span>Download a comprehensive PDF report with all analysis and recommendations</span>
+                      </li>
+                      <li className="flex items-start">
                         <span className="font-medium text-gray-900 mr-2">Filters:</span>
                         <span>Access advanced filters through settings (⚙️) to refine by function, criteria scores, and more</span>
                       </li>
@@ -479,15 +443,35 @@ export const ToolSection: React.FC<ToolSectionProps> = ({
           </div>
         </div>
 
-        <div className={`p-6 ${!isFullscreen && 'section-scroll'}`}>
-          <div className="pt-6 space-y-4">
-            <DraggableList
-              items={sortedTools}
-              onReorder={onToolsReorder}
-              renderItem={renderTool}
-              getItemId={(tool) => tool.id}
-            />
-          </div>
+        {/* Results Section */}
+        <div 
+          className={`p-6 ${!isFullscreen && 'section-scroll'}`}
+          data-lenis-prevent={!isFullscreen}
+        >
+          {sortedTools.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-400 mb-4">
+                <Award className="w-16 h-16 mx-auto" />
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No tools match your current filters</h3>
+              <p className="text-gray-600 mb-4">Try adjusting your filters or criteria to see more results.</p>
+              <button
+                onClick={() => setIsSettingsOpen(true)}
+                className="px-4 py-2 bg-alpine-blue-500 text-white rounded-lg hover:bg-alpine-blue-600 transition-colors"
+              >
+                Adjust Filters
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <DraggableList
+                items={sortedTools}
+                onReorder={onToolsReorder}
+                renderItem={renderTool}
+                getItemId={(tool) => tool.id}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

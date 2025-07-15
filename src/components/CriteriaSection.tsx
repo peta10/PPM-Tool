@@ -277,7 +277,10 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
         </div>
       </div>
 
-      <div className={`p-6 ${!isFullscreen && 'section-scroll'}`}>
+      <div 
+        className={`p-6 ${!isFullscreen && 'section-scroll'}`}
+        data-lenis-prevent={!isFullscreen}
+      >
         <DraggableList
           items={criteria}
           onReorder={onCriteriaChange}

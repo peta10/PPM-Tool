@@ -1,24 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { CriteriaSection } from './components/CriteriaSection';
-import { ToolSection } from './components/ToolSection';
-import { ComparisonSection } from './components/ComparisonSection';
 import { WelcomeScreen } from './components/WelcomeScreen';
-import { 
-  AppLoadingScreen, 
-  SkeletonWrapper, 
-  ToolListSkeleton, 
-  CriteriaSkeletonLoader 
-} from './components/LoadingStates';
+import { AppLoadingScreen } from './components/LoadingStates';
 import { defaultCriteria } from './data/criteria';
 import { defaultTools } from './data/tools';
-import { Tool, Criterion } from './types';
+import { Tool, Criterion, CriteriaRating, Tag } from './types';
 import { FilterCondition } from './components/filters/FilterSystem';
 import { filterTools } from './utils/filterTools';
-import { StepsSection } from './components/StepsSection';
-import { Header } from './components/Header';
 import { useFullscreen } from './contexts/FullscreenContext';
 import { useAuth } from './hooks/useAuth';
+import { useLenis } from './hooks/useLenis';
 import { supabase } from './lib/supabase';
+import { StepProvider } from './contexts/StepContext';
+import { Router } from './pages/Router';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 interface DbCriterion {
   id: string;
@@ -55,6 +49,14 @@ export function App() {
   const [showWelcome, setShowWelcome] = useState(true);
   const [isInitialSetup, setIsInitialSetup] = useState(true);
 
+  // Initialize Lenis smooth scrolling - disable on mobile fullscreen for better performance
+  useLenis({
+    disabled: isMobile && fullscreenView !== 'none',
+    lerp: 0.1,
+    duration: 1.2,
+    isMobile
+  });
+
   // Ensure mobile always has a view selected
   useEffect(() => {
     if (isMobile && fullscreenView === 'none') {
@@ -65,13 +67,22 @@ export function App() {
   // Check if user has seen welcome screen before
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem('ppm-tool-finder-welcome-seen');
-    if (hasSeenWelcome) {
+    if (!hasSeenWelcome) {
+      setShowWelcome(true);
+    } else {
       setShowWelcome(false);
     }
   }, []);
 
+  // Reset fullscreen view when welcome screen is shown
+  useEffect(() => {
+    if (showWelcome) {
+      toggleFullscreen('none');
+    }
+  }, [showWelcome, toggleFullscreen]);
+
   const [criteria, setCriteria] = useState<Criterion[]>(defaultCriteria);
-  const [selectedTools, setSelectedTools] = useState<Tool[]>(defaultTools);
+  const [selectedTools, setSelectedTools] = useState<Tool[]>([]);
   const [removedCriteria, setRemovedCriteria] = useState<Criterion[]>([]);
   const [removedTools, setRemovedTools] = useState<Tool[]>([]);
   const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([]);
@@ -125,8 +136,8 @@ export function App() {
       ratingExplanations,
       type: dbTool.type,
       created_by: dbTool.created_by,
-      criteria: dbTool.criteria as any || [],
-      tags: dbTool.tags as any || [],
+      criteria: (dbTool.criteria || []) as CriteriaRating[],
+      tags: (dbTool.tags || []) as unknown as Tag[],
       created_on: dbTool.created_on,
       updated_at: dbTool.updated_at,
       submitted_at: dbTool.submitted_at,
@@ -274,123 +285,43 @@ export function App() {
   // Use user data when needed for premium features
   console.log('Current user:', user);
 
+  // Render error message if fetch failed
+  if (fetchError) {
+    return (
+      <div className="container mx-auto px-4 py-4">
+        <div className="glass-card p-4 border-l-4 border-l-red-500 bg-red-50/80">
+          <div className="text-red-700 font-medium">{fetchError}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${isMobile ? 'mobile-view' : ''}`}>
-      <Header />
-      <StepsSection />
-
-      {fetchError && (
-        <div className="container mx-auto px-4 py-4">
-          <div className="glass-card p-4 border-l-4 border-l-red-500 bg-red-50/80">
-            <div className="text-red-700 font-medium">{fetchError}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Desktop View */}
-      {!isMobile && (
-        <main className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-14 lg:gap-8 mb-10 sm:mb-14 lg:mb-8">
-            <div className="lg:col-span-5">
-              <SkeletonWrapper
-                loading={isLoading}
-                skeleton={<CriteriaSkeletonLoader />}
-              >
-                <CriteriaSection
-                  criteria={criteria}
-                  removedCriteria={removedCriteria}
-                  onRemovedCriteriaChange={setRemovedCriteria}
-                  onCriteriaChange={handleCriteriaChange}
-                  onRemoveCriterion={handleRemoveCriterion}
-                  onRestoreCriterion={handleRestoreCriterion}
-                  onRestoreAll={handleRestoreAllCriteria}
-                />
-              </SkeletonWrapper>
-            </div>
-            <div className="lg:col-span-7">
-              <SkeletonWrapper
-                loading={isLoading}
-                skeleton={<ToolListSkeleton />}
-              >
-                <ToolSection
-                  tools={defaultTools}
-                  selectedTools={filteredTools}
-                  removedTools={removedTools}
-                  selectedCriteria={criteria}
-                  filterConditions={filterConditions}
-                  filterMode={filterMode}
-                  onAddFilterCondition={handleAddFilterCondition}
-                  onRemoveFilterCondition={handleRemoveFilterCondition}
-                  onUpdateFilterCondition={handleUpdateFilterCondition}
-                  onToggleFilterMode={handleToggleFilterMode}
-                  onToolSelect={handleToolSelect}
-                  onToolRemove={handleToolRemove}
-                  onToolsReorder={handleToolsReorder}
-                  onRestoreAll={handleRestoreAllTools}
-                />
-              </SkeletonWrapper>
-            </div>
-          </div>
-          <div className="mt-10 sm:mt-14 lg:mt-8">
-            <ComparisonSection
-              selectedTools={filteredTools}
-              selectedCriteria={criteria}
-            />
-          </div>
-        </main>
-      )}
-
-      {/* Mobile View */}
-      {isMobile && fullscreenView !== 'none' && (
-        <div className="flex-1 flex flex-col">
-          {fullscreenView === 'criteria' && (
-            <SkeletonWrapper
-              loading={isLoading}
-              skeleton={<CriteriaSkeletonLoader />}
-            >
-              <CriteriaSection
-                criteria={criteria}
-                removedCriteria={removedCriteria}
-                onRemovedCriteriaChange={setRemovedCriteria}
-                onCriteriaChange={handleCriteriaChange}
-                onRemoveCriterion={handleRemoveCriterion}
-                onRestoreCriterion={handleRestoreCriterion}
-                onRestoreAll={handleRestoreAllCriteria}
-              />
-            </SkeletonWrapper>
-          )}
-          {fullscreenView === 'tools' && (
-            <SkeletonWrapper
-              loading={isLoading}
-              skeleton={<ToolListSkeleton />}
-            >
-              <ToolSection
-                tools={defaultTools}
-                selectedTools={filteredTools}
-                removedTools={removedTools}
-                selectedCriteria={criteria}
-                filterConditions={filterConditions}
-                filterMode={filterMode}
-                onAddFilterCondition={handleAddFilterCondition}
-                onRemoveFilterCondition={handleRemoveFilterCondition}
-                onUpdateFilterCondition={handleUpdateFilterCondition}
-                onToggleFilterMode={handleToggleFilterMode}
-                onToolSelect={handleToolSelect}
-                onToolRemove={handleToolRemove}
-                onToolsReorder={handleToolsReorder}
-                onRestoreAll={handleRestoreAllTools}
-              />
-            </SkeletonWrapper>
-          )}
-          {(fullscreenView === 'chart' ||
-            fullscreenView === 'recommendations') && (
-            <ComparisonSection
-              selectedTools={filteredTools}
-              selectedCriteria={criteria}
-            />
-          )}
-        </div>
-      )}
-    </div>
+    <ErrorBoundary>
+      <StepProvider>
+        <Router
+          criteria={criteria}
+          removedCriteria={removedCriteria}
+          selectedTools={filteredTools}
+          removedTools={removedTools}
+          filterConditions={filterConditions}
+          filterMode={filterMode}
+          onCriteriaChange={handleCriteriaChange}
+          onRemoveCriterion={handleRemoveCriterion}
+          onRestoreCriterion={handleRestoreCriterion}
+          onRestoreAllCriteria={handleRestoreAllCriteria}
+          onToolSelect={handleToolSelect}
+          onToolRemove={handleToolRemove}
+          onToolsReorder={handleToolsReorder}
+          onRestoreAllTools={handleRestoreAllTools}
+          onAddFilterCondition={handleAddFilterCondition}
+          onRemoveFilterCondition={handleRemoveFilterCondition}
+          onUpdateFilterCondition={handleUpdateFilterCondition}
+          onToggleFilterMode={handleToggleFilterMode}
+          onRemovedCriteriaChange={setRemovedCriteria}
+          tools={defaultTools}
+        />
+      </StepProvider>
+    </ErrorBoundary>
   );
 }

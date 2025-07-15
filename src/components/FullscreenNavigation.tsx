@@ -2,30 +2,41 @@ import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useFullscreen } from '../contexts/FullscreenContext';
 
-const VIEWS = ['criteria', 'tools', 'chart', 'recommendations'] as const;
+const VIEWS = ['criteria', 'tools', 'chart', 'recommendations', 'results'] as const;
+type ViewType = typeof VIEWS[number];
 
-const getNextView = (currentView: string) => {
-  const currentIndex = VIEWS.indexOf(currentView as any);
+const getNextView = (currentView: string): ViewType => {
+  const currentIndex = VIEWS.indexOf(currentView as ViewType);
   return VIEWS[(currentIndex + 1) % VIEWS.length];
 };
 
-const getPreviousView = (currentView: string) => {
-  const currentIndex = VIEWS.indexOf(currentView as any);
+const getPreviousView = (currentView: string): ViewType => {
+  const currentIndex = VIEWS.indexOf(currentView as ViewType);
   return VIEWS[(currentIndex - 1 + VIEWS.length) % VIEWS.length];
 };
 
 export const FullscreenNavigation: React.FC = () => {
-  const { fullscreenView, setFullscreenView, isMobile } = useFullscreen();
+  const { fullscreenView, setFullscreenView, isMobile, isTransitioning } = useFullscreen();
+
+  const handleNext = React.useCallback(() => {
+    if (isTransitioning) return;
+    
+    const nextView = getNextView(fullscreenView);
+    if (nextView) {
+      setFullscreenView(nextView);
+    }
+  }, [fullscreenView, setFullscreenView, isTransitioning]);
+
+  const handlePrevious = React.useCallback(() => {
+    if (isTransitioning) return;
+    
+    const prevView = getPreviousView(fullscreenView);
+    if (prevView) {
+      setFullscreenView(prevView);
+    }
+  }, [fullscreenView, setFullscreenView, isTransitioning]);
 
   if (fullscreenView === 'none') return null;
-
-  const handleNext = () => {
-    setFullscreenView(getNextView(fullscreenView) as any);
-  };
-
-  const handlePrevious = () => {
-    setFullscreenView(getPreviousView(fullscreenView) as any);
-  };
 
   return (
     <div className={`flex items-center space-x-1 ${isMobile ? 'mobile-nav' : ''}`}>

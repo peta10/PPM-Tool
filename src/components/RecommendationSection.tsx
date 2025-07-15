@@ -149,6 +149,7 @@ export const RecommendationSection: React.FC<RecommendationSectionProps> = ({
         className={`px-6 py-6 space-y-4 ${
           !isFullscreen && 'h-[calc(100vh-8rem)] overflow-y-auto section-scroll'
         }`}
+        data-lenis-prevent={!isFullscreen}
       >
         {sortedTools.map((tool, index) => (
           <div
