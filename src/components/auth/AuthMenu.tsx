@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, LogOut, UserPlus, Settings, ChevronDown, Mail, Lock, Chrome } from 'lucide-react';
-import { useClickOutside } from '../../hooks/useClickOutside';
-import { supabase } from '../../lib/supabase';
+import { useClickOutside } from '@/shared/hooks/useClickOutside';
+import { supabase } from '@/shared/lib/supabase';
 import { User } from '@supabase/supabase-js';
 
 interface AuthMenuProps {

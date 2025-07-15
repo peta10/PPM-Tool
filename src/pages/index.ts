@@ -4,4 +4,4 @@ export { ComparisonPage } from './ComparisonPage';
 export { RecommendationsPage } from './RecommendationsPage';
 export { ResultsPage } from './ResultsPage';
 
-export { Router } from './Router'; 
+export { Router } from '../app/Router'; 

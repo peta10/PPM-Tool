@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Header } from '../components/Header';
-import { StepsSection } from '../components/StepsSection';
-import { EnhancedRecommendationSection } from '../components/EnhancedRecommendationSection';
-import { EmailCaptureModal } from '../components/EmailCaptureModal';
-import { Tool, Criterion } from '../types';
-import { useFullscreen } from '../contexts/FullscreenContext';
-import { generateReport } from '../utils/pdfExport';
+import { Header } from '@/components/layout/Header';
+import { StepsSection } from '@/components/layout/StepsSection';
+import { EnhancedRecommendationSection } from '@/features/recommendations/components/EnhancedRecommendationSection';
+import { EmailCaptureModal } from '@/components/forms/EmailCaptureModal';
+import { Tool, Criterion } from '@/shared/types';
+import { useFullscreen } from '@/shared/contexts/FullscreenContext';
+import { generateReport } from '@/shared/utils/pdfExport';
 import { Download, Trophy, CheckCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/shared/lib/supabase';
 
 interface ResultsPageProps {
   selectedTools: Tool[];

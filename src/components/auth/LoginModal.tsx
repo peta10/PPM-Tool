@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, AlertCircle } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
-import { useClickOutside } from '../../hooks/useClickOutside';
+import { supabase } from '@/shared/lib/supabase';
+import { useClickOutside } from '@/shared/hooks/useClickOutside';
 
 interface LoginModalProps {
   onClose: () => void;

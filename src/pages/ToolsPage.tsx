@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ToolSection } from '../components/ToolSection';
-import { Header } from '../components/Header';
-import { StepsSection } from '../components/StepsSection';
-import { Tool, Criterion } from '../types';
-import { FilterCondition } from '../components/filters/FilterSystem';
-import { useSteps } from '../contexts/StepContext';
-import { useFullscreen } from '../contexts/FullscreenContext';
-import { ArrowRight } from 'lucide-react';
+import { ToolSection } from '@/features/tools/ToolSection';
+import { Header } from '@/components/layout/Header';
+import { StepsSection } from '@/components/layout/StepsSection';
+import { Tool, Criterion } from '@/shared/types';
+import { FilterCondition } from '@/components/filters/FilterSystem';
+import { useSteps } from '@/shared/contexts/StepContext';
+import { useFullscreen } from '@/shared/contexts/FullscreenContext';
 
 interface ToolsPageProps {
   tools: Tool[];
@@ -96,34 +95,6 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({
       <Header />
       <StepsSection />
       
-      {/* Top Continue Button */}
-      <div className="container mx-auto px-4 pt-4">
-        <div className="flex justify-end">
-          <button
-            onClick={handleContinue}
-            disabled={isSubmitting}
-            className={`
-              flex items-center px-6 py-2 
-              bg-alpine-blue-500 hover:bg-alpine-blue-600 text-white font-medium 
-              rounded-lg transition-colors shadow-sm text-sm
-              ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}
-            `}
-          >
-            {isSubmitting ? (
-              <>
-                <span className="mr-2">Processing</span>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              </>
-            ) : (
-              <>
-                Continue to Chart Analysis
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-      
       <main className="container mx-auto px-4 py-8">
         {validationError && (
           <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
@@ -146,6 +117,8 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({
           onToolRemove={onToolRemove}
           onToolsReorder={onToolsReorder}
           onRestoreAll={onRestoreAll}
+          onContinue={handleContinue}
+          isSubmitting={isSubmitting}
         />
       </main>
     </div>
