@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ArrowRight, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowRight, ArrowLeft, ToggleLeft, ToggleRight, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Question {
   id: string;
@@ -12,10 +13,17 @@ interface Question {
   }[];
 }
 
+interface Criterion {
+  id: string;
+  name: string;
+  description: string;
+}
+
 interface GuidedCriteriaQuestionsProps {
   onNext: (rankings: { [key: string]: number }) => void;
   onBack: () => void;
   userRole?: string;
+  onRealTimeUpdate?: (rankings: { [key: string]: number }) => void;
 }
 
 const questions: Question[] = [
@@ -86,13 +94,84 @@ const questions: Question[] = [
   }
 ];
 
+const criteria: Criterion[] = [
+  {
+    id: 'scalability',
+    name: 'Scalability',
+    description: 'How well the tool scales with team size and project volume'
+  },
+  {
+    id: 'integrations',
+    name: 'Integrations & Extensibility', 
+    description: 'Third-party integrations and API capabilities'
+  },
+  {
+    id: 'easeOfUse',
+    name: 'Ease of Use',
+    description: 'User interface and learning curve for team members'
+  },
+  {
+    id: 'flexibility',
+    name: 'Flexibility & Customization',
+    description: 'Ability to adapt workflows and customize features'
+  },
+  {
+    id: 'ppmFeatures',
+    name: 'PPM Features',
+    description: 'Portfolio management capabilities and project oversight'
+  },
+  {
+    id: 'reporting',
+    name: 'Reporting & Analytics',
+    description: 'Data visualization and business intelligence features'
+  },
+  {
+    id: 'security',
+    name: 'Security & Compliance',
+    description: 'Data protection and regulatory compliance features'
+  }
+];
+
 export const GuidedCriteriaQuestions: React.FC<GuidedCriteriaQuestionsProps> = ({ 
   onNext, 
   onBack, 
-  userRole 
+  userRole,
+  onRealTimeUpdate
 }) => {
+  const [isManualMode, setIsManualMode] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<{ [key: string]: number }>({});
+  const [manualRankings, setManualRankings] = useState<{ [key: string]: number }>(() => {
+    // Initialize with default values
+    const defaults: { [key: string]: number } = {};
+    criteria.forEach(c => defaults[c.id] = 3);
+    return defaults;
+  });
+
+  // Real-time calculated rankings based on current answers
+  const [realTimeRankings, setRealTimeRankings] = useState<{ [key: string]: number }>(() => {
+    const defaults: { [key: string]: number } = {};
+    criteria.forEach(c => defaults[c.id] = 3);
+    return defaults;
+  });
+
+  // Update real-time rankings whenever answers change
+  useEffect(() => {
+    if (!isManualMode && Object.keys(answers).length > 0) {
+      const newRankings = calculateRankings();
+      setRealTimeRankings(newRankings);
+      // Call the real-time update callback to update background sliders
+      onRealTimeUpdate?.(newRankings);
+    }
+  }, [answers, isManualMode, userRole, manualRankings, onRealTimeUpdate]);
+
+  // Update real-time rankings when manual rankings change
+  useEffect(() => {
+    if (isManualMode) {
+      // Call the real-time update callback for manual mode too
+      onRealTimeUpdate?.(manualRankings);
+    }
+  }, [manualRankings, isManualMode, onRealTimeUpdate]);
 
   const handleAnswer = (questionId: string, value: number) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -105,13 +184,21 @@ export const GuidedCriteriaQuestions: React.FC<GuidedCriteriaQuestionsProps> = (
     }, 500);
   };
 
+  const handleManualRankingChange = (criterionId: string, value: number) => {
+    setManualRankings(prev => ({ ...prev, [criterionId]: value }));
+  };
+
   const calculateRankings = () => {
+    if (isManualMode) {
+      return manualRankings;
+    }
+
     const rankings: { [key: string]: number } = {};
     const weights: { [key: string]: number } = {};
     
     // Initialize all criteria
-    const criteria = ['scalability', 'integrations', 'easeOfUse', 'flexibility', 'ppmFeatures', 'reporting', 'security'];
-    criteria.forEach(criterion => {
+    const criteriaIds = ['scalability', 'integrations', 'easeOfUse', 'flexibility', 'ppmFeatures', 'reporting', 'security'];
+    criteriaIds.forEach(criterion => {
       rankings[criterion] = 0;
       weights[criterion] = 0;
     });
@@ -158,104 +245,373 @@ export const GuidedCriteriaQuestions: React.FC<GuidedCriteriaQuestionsProps> = (
   };
 
   const currentQ = questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const progress = isManualMode ? 100 : ((currentQuestion + 1) / questions.length) * 100;
   const isLastQuestion = currentQuestion === questions.length - 1;
   const allAnswered = Object.keys(answers).length === questions.length;
 
+  // Animation variants
+  const questionVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+    exit: { opacity: 0 }
+  };
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-4xl mx-auto">
       <Card className="shadow-xl border-0 bg-white/95 backdrop-blur-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl text-gray-900">
-            Rank Your Criteria: Question {currentQuestion + 1}
+            {isManualMode ? 'Manual Criteria Ranking' : `Rank Your Criteria: Question ${currentQuestion + 1}`}
           </CardTitle>
           <CardDescription className="text-gray-600">
-            Help us understand your priorities to get personalized recommendations
+            {isManualMode ? 'Set your criteria priorities manually' : 'Help us understand your priorities to get personalized recommendations'}
           </CardDescription>
           
-          {/* Progress Bar */}
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
-            <div 
-              className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full transition-all duration-500"
-              style={{ width: `${progress}%` }}
+          {/* Mode Toggle */}
+          <div className="flex items-center justify-center mt-4 space-x-3">
+            <span className={`text-sm font-medium ${!isManualMode ? 'text-blue-600' : 'text-gray-500'}`}>
+              Guided Questions
+            </span>
+            <motion.button
+              onClick={() => setIsManualMode(!isManualMode)}
+              className="flex items-center"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <motion.div
+                animate={{ rotate: isManualMode ? 0 : 180 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+              >
+                {isManualMode ? (
+                  <ToggleRight className="w-8 h-8 text-blue-600" />
+                ) : (
+                  <ToggleLeft className="w-8 h-8 text-gray-400" />
+                )}
+              </motion.div>
+            </motion.button>
+            <span className={`text-sm font-medium ${isManualMode ? 'text-blue-600' : 'text-gray-500'}`}>
+              Manual Ranking
+            </span>
+          </div>
+          
+          {/* Animated Progress Bar */}
+          <div className="w-full bg-gray-200 rounded-full h-2 mt-4 overflow-hidden">
+            <motion.div 
+              className="bg-gradient-to-r from-blue-500 to-purple-600 h-2 rounded-full"
+              initial={{ width: "0%" }}
+              animate={{ width: `${progress}%` }}
+              transition={{ 
+                duration: 0.8, 
+                ease: "easeOut",
+                type: "spring",
+                stiffness: 100,
+                damping: 15
+              }}
             />
           </div>
-          <div className="text-sm text-gray-500 mt-1">
+          <motion.div 
+            className="text-sm text-gray-500 mt-1"
+            key={progress}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             {Math.round(progress)}% Complete
-          </div>
+          </motion.div>
         </CardHeader>
 
         <CardContent className="p-8">
-          {/* Question */}
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6">
-              {currentQ.text}
-            </h3>
+          {isManualMode ? (
+            /* Manual Ranking Mode */
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="text-center mb-8">
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                  <Info className="w-5 h-5 text-blue-500" />
+                  <p className="text-gray-600">
+                    Rate each criterion from 1 (low priority) to 5 (high priority)
+                  </p>
+                </div>
+              </div>
 
-            {/* Answer Options */}
-            <div className="space-y-3">
-              {currentQ.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswer(currentQ.id, option.value)}
-                  className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
-                    answers[currentQ.id] === option.value
-                      ? 'border-blue-500 bg-blue-50 text-blue-900'
-                      : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700'
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{option.text}</span>
-                    {answers[currentQ.id] === option.value && (
-                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                        <div className="w-2 h-2 bg-white rounded-full" />
+              <div className="space-y-6">
+                {criteria.map((criterion, index) => (
+                  <motion.div 
+                    key={criterion.id} 
+                    className="border border-gray-200 rounded-lg p-6 bg-gray-50"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ 
+                      duration: 0.3, 
+                      delay: index * 0.05
+                    }}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{criterion.name}</h3>
+                        <p className="text-sm text-gray-600">{criterion.description}</p>
                       </div>
-                    )}
+                      <div className="text-right ml-4">
+                        <motion.div 
+                          className="text-2xl font-bold text-blue-600"
+                          key={manualRankings[criterion.id]}
+                          initial={{ scale: 1.2, opacity: 0.7 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ 
+                            duration: 0.3,
+                            ease: "easeOut",
+                            type: "spring",
+                            stiffness: 200
+                          }}
+                        >
+                          {manualRankings[criterion.id]}
+                        </motion.div>
+                        <div className="text-xs text-gray-500">/ 5</div>
+                      </div>
+                    </div>
+                    
+                    {/* Animated Rating Buttons */}
+                    <div className="flex space-x-2">
+                      {[1, 2, 3, 4, 5].map((rating) => (
+                        <motion.button
+                          key={rating}
+                          onClick={() => handleManualRankingChange(criterion.id, rating)}
+                          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+                            manualRankings[criterion.id] === rating
+                              ? 'bg-blue-600 text-white'
+                              : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-300'
+                          }`}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          animate={{
+                            backgroundColor: manualRankings[criterion.id] === rating ? '#2563eb' : '#ffffff',
+                            color: manualRankings[criterion.id] === rating ? '#ffffff' : '#4b5563'
+                          }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          {rating}
+                        </motion.button>
+                      ))}
+                    </div>
+
+
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          ) : (
+            /* Guided Questions Mode */
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Question Section */}
+              <div className="lg:col-span-2">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentQuestion}
+                    variants={questionVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    transition={{ 
+                      duration: 0.4, 
+                      ease: "easeInOut" 
+                    }}
+                    className="text-center mb-8"
+                  >
+                    <h3 className="text-xl font-semibold text-gray-900 mb-6">
+                      {currentQ.text}
+                    </h3>
+
+                    {/* Answer Options */}
+                    <div className="space-y-3">
+                      {currentQ.options.map((option, index) => (
+                        <motion.button
+                          key={index}
+                          onClick={() => handleAnswer(currentQ.id, option.value)}
+                          className={`w-full p-4 text-left rounded-lg border-2 transition-all duration-200 ${
+                            answers[currentQ.id] === option.value
+                              ? 'border-blue-500 bg-blue-50 text-blue-900'
+                              : 'border-gray-200 hover:border-gray-300 bg-white hover:bg-gray-50 text-gray-700'
+                          }`}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ 
+                            duration: 0.2, 
+                            delay: index * 0.05
+                          }}
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{option.text}</span>
+                            <AnimatePresence>
+                              {answers[currentQ.id] === option.value && (
+                                <motion.div 
+                                  className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center"
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 1 }}
+                                  exit={{ scale: 0, opacity: 0 }}
+                                  transition={{ 
+                                    duration: 0.3,
+                                    type: "spring",
+                                    stiffness: 200
+                                  }}
+                                >
+                                  <motion.div 
+                                    className="w-2 h-2 bg-white rounded-full"
+                                    initial={{ scale: 0 }}
+                                    animate={{ scale: 1 }}
+                                    transition={{ delay: 0.1 }}
+                                  />
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
+              {/* Real-time Criteria Rankings Preview */}
+              <div className="lg:col-span-1">
+                <motion.div
+                  className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <h4 className="text-lg font-semibold text-blue-900 mb-4 flex items-center">
+                    <motion.div
+                      className="w-3 h-3 bg-blue-500 rounded-full mr-2"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    />
+                    Live Preview
+                  </h4>
+                  <div className="space-y-4">
+                    {criteria.map((criterion, index) => {
+                      const currentRanking = isManualMode ? manualRankings[criterion.id] : realTimeRankings[criterion.id];
+                      return (
+                        <motion.div
+                          key={criterion.id}
+                          className="bg-white rounded-lg p-3 shadow-sm"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ 
+                            duration: 0.2, 
+                            delay: index * 0.03 
+                          }}
+                        >
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-800 truncate">
+                              {criterion.name}
+                            </span>
+                            <motion.span 
+                              className="text-sm font-bold text-blue-600"
+                              key={currentRanking}
+                              initial={{ scale: 1.3, opacity: 0.7 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ 
+                                duration: 0.3,
+                                type: "spring",
+                                stiffness: 200
+                              }}
+                            >
+                              {currentRanking}/5
+                            </motion.span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                            <motion.div
+                              className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full"
+                              initial={{ width: "60%" }}
+                              animate={{ width: `${(currentRanking / 5) * 100}%` }}
+                              transition={{
+                                duration: 0.8,
+                                ease: "easeOut",
+                                type: "spring",
+                                stiffness: 100,
+                                damping: 15
+                              }}
+                            />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
                   </div>
-                </button>
-              ))}
+                </motion.div>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Navigation */}
-          <div className="flex justify-between items-center">
-            <button
-              onClick={currentQuestion > 0 ? () => setCurrentQuestion(prev => prev - 1) : onBack}
+          <motion.div 
+            className="flex justify-between items-center mt-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              onClick={(!isManualMode && currentQuestion > 0) ? () => setCurrentQuestion(prev => prev - 1) : onBack}
               className="flex items-center px-6 py-3 text-gray-600 hover:text-gray-900 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              {currentQuestion > 0 ? 'Previous' : 'Back'}
-            </button>
+              {(!isManualMode && currentQuestion > 0) ? 'Previous' : 'Back'}
+            </motion.button>
 
-            {isLastQuestion && allAnswered ? (
-              <button
+            {(isManualMode || (isLastQuestion && allAnswered)) ? (
+              <motion.button
                 onClick={handleComplete}
-                className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105"
+                className="flex items-center px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                initial={{ opacity: 0.7 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
               >
                 Complete Assessment
                 <ArrowRight className="w-4 h-4 ml-2" />
-              </button>
+              </motion.button>
             ) : (
-              <button
+              <motion.button
                 onClick={() => setCurrentQuestion(prev => prev + 1)}
                 disabled={!answers[currentQ.id] || currentQuestion >= questions.length - 1}
-                className="flex items-center px-6 py-3 bg-gray-100 text-gray-400 rounded-lg cursor-not-allowed"
+                className={`flex items-center px-6 py-3 rounded-lg transition-all ${
+                  answers[currentQ.id] && currentQuestion < questions.length - 1
+                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+                whileHover={answers[currentQ.id] ? { scale: 1.05 } : {}}
+                whileTap={answers[currentQ.id] ? { scale: 0.95 } : {}}
               >
                 Next
                 <ArrowRight className="w-4 h-4 ml-2" />
-              </button>
+              </motion.button>
             )}
-          </div>
+          </motion.div>
 
-          {/* Skip Option */}
-          <div className="text-center mt-6">
-            <button
-              onClick={handleComplete}
-              className="text-sm text-gray-500 hover:text-gray-700 underline"
+          {/* Skip Option - only show in guided mode */}
+          {!isManualMode && (
+            <motion.div 
+              className="text-center mt-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
             >
-              Skip remaining questions and use current answers
-            </button>
-          </div>
+              <motion.button
+                onClick={handleComplete}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+                whileHover={{ scale: 1.05 }}
+              >
+                Skip remaining questions and use current answers
+              </motion.button>
+            </motion.div>
+          )}
         </CardContent>
       </Card>
     </div>

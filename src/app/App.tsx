@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { WelcomeScreen } from '@/components/common/WelcomeScreen';
-import { AppLoadingScreen } from '@/components/common/LoadingStates';
 import { defaultCriteria } from '@/data/criteria';
 import { defaultTools } from '@/data/tools';
 import { Tool, Criterion, CriteriaRating, Tag } from '@/shared/types';
@@ -43,11 +42,10 @@ interface DbTool {
 
 export function App() {
   const { fullscreenView, toggleFullscreen, isMobile } = useFullscreen();
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  useAuth(); // Initialize auth state
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
-  const [isInitialSetup, setIsInitialSetup] = useState(true);
+  const [startWithGuidedQuestions, setStartWithGuidedQuestions] = useState(false);
 
   // Initialize Lenis smooth scrolling - allow it to work normally
   useLenis({
@@ -64,14 +62,9 @@ export function App() {
     }
   }, [isMobile, fullscreenView, toggleFullscreen]);
 
-  // Check if user has seen welcome screen before
+  // Always show welcome screen on initial load
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('ppm-tool-finder-welcome-seen');
-    if (!hasSeenWelcome) {
-      setShowWelcome(true);
-    } else {
-      setShowWelcome(false);
-    }
+    setShowWelcome(true);
   }, []);
 
   // Reset fullscreen view when welcome screen is shown
@@ -149,43 +142,37 @@ export function App() {
     return transformedTool;
   };
 
-  // Fetch tools from database with enhanced loading states
+  // Fetch tools from database in the background
   useEffect(() => {
     const fetchTools = async () => {
       try {
-        setIsLoading(true);
         setFetchError(null);
 
-        // Simulate minimum loading time for better UX
-        const [data] = await Promise.all([
-          supabase
-            .from('tools_view')
-            .select('*')
-            .eq('type', 'application'),
-          new Promise(resolve => setTimeout(resolve, isInitialSetup ? 2000 : 500))
-        ]);
+        const { data, error } = await supabase
+          .from('tools_view')
+          .select('*')
+          .eq('type', 'application')
+          .eq('submission_status', 'approved'); // Only fetch approved tools
 
-        if (data.error) {
-          throw data.error;
+        if (error) {
+          throw error;
         }
 
-        if (data.data) {
-          const transformedTools = data.data.map(transformDatabaseTool);
+        if (data) {
+          console.log('Fetched approved tools:', data.length, 'tools');
+          const transformedTools = data.map(transformDatabaseTool);
           setSelectedTools(transformedTools);
         }
       } catch (err) {
         console.error('Error fetching tools:', err);
         setFetchError('Failed to load tools. Please try again later.');
-      } finally {
-        setIsLoading(false);
-        setIsInitialSetup(false);
       }
     };
 
     if (!showWelcome) {
       fetchTools();
     }
-  }, [showWelcome, isInitialSetup]);
+  }, [showWelcome]);
 
   const filteredTools = filterTools(
     selectedTools,
@@ -259,13 +246,24 @@ export function App() {
 
   const handleWelcomeGetStarted = () => {
     localStorage.setItem('ppm-tool-finder-welcome-seen', 'true');
+    setStartWithGuidedQuestions(true); // Open guided questions automatically
     setShowWelcome(false);
   };
 
   const handleWelcomeSkip = () => {
     localStorage.setItem('ppm-tool-finder-welcome-seen', 'true');
+    setStartWithGuidedQuestions(false); // Go to normal criteria view
     setShowWelcome(false);
   };
+
+  // Reset guided questions flag after first use
+  useEffect(() => {
+    if (!showWelcome && startWithGuidedQuestions) {
+      // Reset the flag after a short delay to allow the component to mount
+      const timer = setTimeout(() => setStartWithGuidedQuestions(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [showWelcome, startWithGuidedQuestions]);
 
   // Show welcome screen
   if (showWelcome) {
@@ -277,13 +275,7 @@ export function App() {
     );
   }
 
-  // Show initial loading screen
-  if (isInitialSetup && isLoading) {
-    return <AppLoadingScreen />;
-  }
-
   // Use user data when needed for premium features
-  console.log('Current user:', user);
 
   // Render error message if fetch failed
   if (fetchError) {
@@ -320,6 +312,7 @@ export function App() {
           onToggleFilterMode={handleToggleFilterMode}
           onRemovedCriteriaChange={setRemovedCriteria}
           tools={defaultTools}
+          startWithGuidedQuestions={startWithGuidedQuestions}
         />
       </StepProvider>
     </ErrorBoundary>

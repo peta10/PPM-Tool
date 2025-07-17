@@ -27,6 +27,7 @@ interface RouterProps {
   onToggleFilterMode: () => void;
   onRemovedCriteriaChange: (criteria: Criterion[]) => void;
   tools: Tool[];
+  startWithGuidedQuestions?: boolean;
 }
 
 export const Router: React.FC<RouterProps> = ({
@@ -50,6 +51,7 @@ export const Router: React.FC<RouterProps> = ({
   onToggleFilterMode,
   onRemovedCriteriaChange,
   tools,
+  startWithGuidedQuestions = false,
 }) => {
   const { currentStep } = useSteps();
   const { isMobile, fullscreenView } = useFullscreen();
@@ -68,6 +70,7 @@ export const Router: React.FC<RouterProps> = ({
               onRemoveCriterion={onRemoveCriterion}
               onRestoreCriterion={onRestoreCriterion}
               onRestoreAll={onRestoreAllCriteria}
+              startWithGuidedQuestions={startWithGuidedQuestions}
             />
           </ErrorBoundary>
         );
@@ -147,6 +150,7 @@ export const Router: React.FC<RouterProps> = ({
             onRemoveCriterion={onRemoveCriterion}
             onRestoreCriterion={onRestoreCriterion}
             onRestoreAll={onRestoreAllCriteria}
+            startWithGuidedQuestions={startWithGuidedQuestions}
           />
         </ErrorBoundary>
       );

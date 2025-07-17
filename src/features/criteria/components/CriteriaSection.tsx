@@ -10,6 +10,7 @@ import { Header } from '@/components/layout/Header';
 import { StepsSection } from '@/components/layout/StepsSection';
 import { GuidedRankingForm } from '@/components/forms/GuidedRankingForm';
 import { Slider } from '@/components/ui/slider';
+import { motion } from 'framer-motion';
 
 interface CriteriaSectionProps {
   criteria: Criterion[];
@@ -21,6 +22,7 @@ interface CriteriaSectionProps {
   onRestoreAll: () => void;
   onContinue?: () => void;
   isSubmitting?: boolean;
+  startWithGuidedQuestions?: boolean;
 }
 
 export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
@@ -32,6 +34,7 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
   onRestoreAll,
   onContinue,
   isSubmitting = false,
+  startWithGuidedQuestions = false,
 }) => {
   const { fullscreenView, toggleFullscreen, isMobile } = useFullscreen();
   const isFullscreen = fullscreenView === 'criteria';
@@ -39,7 +42,7 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const settingsRef = React.useRef<HTMLDivElement>(null);
   const [criterionWithError, setCriterionWithError] = React.useState<string | null>(null);
-  const [isGuidedFormOpen, setIsGuidedFormOpen] = React.useState(false);
+  const [isGuidedFormOpen, setIsGuidedFormOpen] = React.useState(startWithGuidedQuestions);
 
   useClickOutside(settingsRef, () => setIsSettingsOpen(false));
 
@@ -54,12 +57,17 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
     setIsSettingsOpen(false);
   };
 
-  const handleRatingChange = (id: string, value: number) => {
+  const handleRatingChange = React.useCallback((id: string, value: number) => {
     const updatedCriteria = criteria.map(criterion =>
       criterion.id === id ? { ...criterion, userRating: value } : criterion
     );
     onCriteriaChange(updatedCriteria);
-  };
+  }, [criteria, onCriteriaChange]);
+
+  // Create memoized callback for each criterion to prevent unnecessary re-renders
+  const createSliderCallback = React.useCallback((criterionId: string) => {
+    return (values: number[]) => handleRatingChange(criterionId, values[0]);
+  }, [handleRatingChange]);
 
   const handleUpdateRankings = (rankings: { [key: string]: number }) => {
     const updatedCriteria = criteria.map(criterion => ({
@@ -70,7 +78,12 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
   };
 
   const renderCriterion = (criterion: Criterion) => (
-    <div className="border-b pb-4 pl-8">
+    <motion.div 
+      className="border-b pb-4 pl-8"
+      initial={{ opacity: 1 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex items-center justify-between mb-2 relative">
         <div className="flex items-center">
           <span className="font-medium">{criterion.name}</span>
@@ -113,213 +126,229 @@ export const CriteriaSection: React.FC<CriteriaSectionProps> = ({
       </div>
       
       <div className="flex items-center space-x-4">
-        <Slider
-          value={[criterion.userRating]}
-          onValueChange={(values) => handleRatingChange(criterion.id, values[0])}
-          min={1}
-          max={5}
-          step={1}
-          className="w-full"
-        />
-        <span className={`w-8 text-center font-medium ${
-          criterion.userRating >= 4 ? 'text-green-600' :  // Critical requirement (4-5)
-                      criterion.userRating >= 2 ? 'text-alpine-blue-500' :   // Important feature (2-3)
-          'text-gray-600'                                 // Nice to have (1)
-        }`}>{criterion.userRating}</span>
+        <div className="w-full relative">
+          <Slider
+            value={[criterion.userRating]}
+            onValueChange={createSliderCallback(criterion.id)}
+            min={1}
+            max={5}
+            step={1}
+            className="w-full"
+          />
+        </div>
+        <motion.span 
+          className={`w-8 text-center font-medium ${
+            criterion.userRating >= 4 ? 'text-green-600' :
+            criterion.userRating >= 2 ? 'text-alpine-blue-500' :
+            'text-gray-600'
+          }`}
+          key={criterion.userRating}
+          initial={{ scale: 1.2, opacity: 0.7 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ 
+            duration: 0.3,
+            type: "spring",
+            stiffness: 200
+          }}
+        >
+          {criterion.userRating}
+        </motion.span>
       </div>
-    </div>
+    </motion.div>
   );
+
   return (
     <div id="criteria-section" className={`bg-white rounded-lg shadow-lg flex flex-col ${isFullscreen ? 'fullscreen-container' : ''}`}>
       <div className="flex flex-col h-full">
-      {isFullscreen && !isMobile && (
-        <div className="flex-shrink-0">
-          <Header />
-          <StepsSection />
-        </div>
-      )}
-      
-      {isFullscreen && isMobile && (
-        <div className="flex-shrink-0 bg-white">
-          <Header />
-          <StepsSection />
-        </div>
-      )}
+        {isFullscreen && !isMobile && (
+          <div className="flex-shrink-0">
+            <Header />
+            <StepsSection />
+          </div>
+        )}
+        
+        {isFullscreen && isMobile && (
+          <div className="flex-shrink-0 bg-white">
+            <Header />
+            <StepsSection />
+          </div>
+        )}
 
-      <div className="flex items-center justify-between p-6 pb-4 border-b">
-        <div className="flex items-center">
-          <Sliders className="w-6 h-6 mr-2 text-alpine-blue-500" />
-          <h2 className="text-xl font-bold text-midnight-800">Criteria</h2>
-          <span className="hidden lg:block ml-2 text-sm text-midnight-400">
-            {criteria.length} {criteria.length === 1 ? 'criterion' : 'criteria'}
-          </span>
-          <button
-            className="ml-4 inline-flex items-center px-3 py-1.5 text-sm font-medium text-alpine-blue-500 bg-alpine-blue-50 hover:bg-alpine-blue-100 rounded-lg transition-colors"
-            onClick={() => setIsGuidedFormOpen(true)}
-          >
-            Guided Rankings
-            <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold bg-alpine-blue-100 text-alpine-blue-700 rounded">BETA</span>
-          </button>
-        </div>
-        <div className="flex items-center space-x-2">
-          <div className="relative" ref={settingsRef}>
+        <div className="flex items-center justify-between p-6 pb-4 border-b">
+          <div className="flex items-center">
+            <Sliders className="w-6 h-6 mr-2 text-alpine-blue-500" />
+            <h2 className="text-xl font-bold text-midnight-800">Criteria</h2>
+            <span className="hidden lg:block ml-2 text-sm text-midnight-400">
+              {criteria.length} {criteria.length === 1 ? 'criterion' : 'criteria'}
+            </span>
             <button
-              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
+              className="ml-4 inline-flex items-center px-3 py-1.5 text-sm font-medium text-alpine-blue-500 bg-alpine-blue-50 hover:bg-alpine-blue-100 rounded-lg transition-colors"
+              onClick={() => setIsGuidedFormOpen(true)}
             >
-              <Settings className="w-5 h-5 text-gray-600" />
+              Guided Rankings
+              <span className="ml-2 px-1.5 py-0.5 text-[10px] font-semibold bg-alpine-blue-100 text-alpine-blue-700 rounded">BETA</span>
             </button>
-            
-            {isSettingsOpen && (
-              <div className="settings-overlay">
-                <div className="fixed inset-0" onClick={() => setIsSettingsOpen(false)} />
-                <div className="settings-content">
-                <div className="flex items-center justify-between p-3 border-b">
-                  <div>
-                    <h3 className="font-medium">Criteria Settings</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">
-                      {criteria.length} {criteria.length === 1 ? 'criterion' : 'criteria'} visible
-                    </p>
-                  </div>
-                  <div className="flex items-center space-x-4">
-                    <button
-                      onClick={handleResetCriteria}
-                      className="px-3 py-1.5 text-sm font-medium text-white bg-alpine-blue-500 hover:bg-alpine-blue-600 rounded-lg transition-colors whitespace-nowrap"
-                    >
-                      Reset All
-                    </button>
-                    <button
-                      onClick={() => setIsSettingsOpen(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="p-4 space-y-6">
-                  {removedCriteria.length > 0 && (
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-sm text-gray-500">
-                          {removedCriteria.length} {removedCriteria.length === 1 ? 'criterion' : 'criteria'} removed
-                          <button
-                            onClick={onRestoreAll}
-                            className="ml-2 text-sm text-alpine-blue-500 hover:text-alpine-blue-700"
-                          >
-                            Add Back All
-                          </button>
-                        </span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="relative" ref={settingsRef}>
+              <button
+                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <Settings className="w-5 h-5 text-gray-600" />
+              </button>
+              
+              {isSettingsOpen && (
+                <div className="settings-overlay">
+                  <div className="fixed inset-0" onClick={() => setIsSettingsOpen(false)} />
+                  <div className="settings-content">
+                    <div className="flex items-center justify-between p-3 border-b">
+                      <div>
+                        <h3 className="font-medium">Criteria Settings</h3>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          {criteria.length} {criteria.length === 1 ? 'criterion' : 'criteria'} visible
+                        </p>
                       </div>
-                      <RemovedCriteriaMenu
-                        removedCriteria={removedCriteria}
-                        onRestore={onRestoreCriterion}
-                        onRestoreAll={onRestoreAll}
-                      />
+                      <div className="flex items-center space-x-4">
+                        <button
+                          onClick={handleResetCriteria}
+                          className="px-3 py-1.5 text-sm font-medium text-white bg-alpine-blue-500 hover:bg-alpine-blue-600 rounded-lg transition-colors whitespace-nowrap"
+                        >
+                          Reset All
+                        </button>
+                        <button
+                          onClick={() => setIsSettingsOpen(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                  )}
-                </div>
-                </div>
-              </div>
-            )}
-          </div>
-          <FullscreenNavigation />
-          {!isMobile && (
-            <button
-              onClick={() => toggleFullscreen('criteria')}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-            >
-              {isFullscreen ? (
-                <Minimize2 className="w-5 h-5 text-gray-600" />
-              ) : (
-                <Maximize2 className="w-5 h-5 text-gray-600" />
-              )}
-            </button>
-          )}
-          {onContinue && (
-            <button
-              onClick={onContinue}
-              disabled={isSubmitting}
-              className={`
-                flex items-center px-4 py-2 
-                bg-alpine-blue-500 hover:bg-alpine-blue-600 text-white font-medium 
-                rounded-lg transition-colors shadow-sm text-sm
-                ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}
-              `}
-            >
-              {isSubmitting ? (
-                <>
-                  <span className="mr-2">Processing</span>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                </>
-              ) : (
-                <>
-                  Continue to Tool Selection
-                  <ArrowRight className="ml-2 w-4 h-4" />
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="flex-shrink-0 border-b bg-gray-50">
-        <div className="px-6">
-          <div className="relative">
-            <button
-              onClick={() => setInstructionsCollapsed(!instructionsCollapsed)}
-              className="w-full flex items-center justify-between py-3 text-left group"
-            >
-              <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900">Criteria Instructions</span>
-              {instructionsCollapsed ? (
-                <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-              ) : (
-                <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
-              )}
-            </button>
-            {!instructionsCollapsed && (
-              <div className="py-3">
-                <div className="space-y-3 text-sm text-gray-600">
-                  <p>Two ways to rank your criteria:</p>
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-1">1. Guided Ranking (beta)</h4>
-                      <p className="text-gray-600">
-                        Answer 10 questions about your needs to automatically determine optimal rankings.
-                        Click the "Guided Rankings" button above to start.
-                      </p>
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-1">2. Manual Ranking</h4>
-                      <p className="text-gray-600 mb-2">
-                        Directly set importance levels using the sliders below (1-5 scale). Use the help icon (?) next to each criterion for detailed descriptions and examples.
-                      </p>
+                    
+                    <div className="p-4 space-y-6">
+                      {removedCriteria.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-sm text-gray-500">
+                              {removedCriteria.length} {removedCriteria.length === 1 ? 'criterion' : 'criteria'} removed
+                              <button
+                                onClick={onRestoreAll}
+                                className="ml-2 text-sm text-alpine-blue-500 hover:text-alpine-blue-700"
+                              >
+                                Add Back All
+                              </button>
+                            </span>
+                          </div>
+                          <RemovedCriteriaMenu
+                            removedCriteria={removedCriteria}
+                            onRestore={onRestoreCriterion}
+                            onRestoreAll={onRestoreAll}
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
+            <FullscreenNavigation />
+            {!isMobile && (
+              <button
+                onClick={() => toggleFullscreen('criteria')}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                {isFullscreen ? (
+                  <Minimize2 className="w-5 h-5 text-gray-600" />
+                ) : (
+                  <Maximize2 className="w-5 h-5 text-gray-600" />
+                )}
+              </button>
+            )}
+            {onContinue && (
+              <button
+                onClick={onContinue}
+                disabled={isSubmitting}
+                className={`
+                  flex items-center px-4 py-2 
+                  bg-alpine-blue-500 hover:bg-alpine-blue-600 text-white font-medium 
+                  rounded-lg transition-colors shadow-sm text-sm
+                  ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}
+                `}
+              >
+                {isSubmitting ? (
+                  <>
+                    <span className="mr-2">Processing</span>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  </>
+                ) : (
+                  <>
+                    Continue to Tool Selection
+                    <ArrowRight className="ml-2 w-4 h-4" />
+                  </>
+                )}
+              </button>
             )}
           </div>
         </div>
-      </div>
 
-      <div 
-        className={`p-6 ${!isFullscreen && 'section-scroll'}`}
-      >
-        <DraggableList
-          items={criteria}
-          onReorder={onCriteriaChange}
-          renderItem={renderCriterion}
-          getItemId={(criterion) => criterion.id}
+        <div className="flex-shrink-0 border-b bg-gray-50">
+          <div className="px-6">
+            <div className="relative">
+              <button
+                onClick={() => setInstructionsCollapsed(!instructionsCollapsed)}
+                className="w-full flex items-center justify-between py-3 text-left group"
+              >
+                <span className="text-sm font-medium text-gray-600 group-hover:text-gray-900">Criteria Instructions</span>
+                {instructionsCollapsed ? (
+                  <ChevronDown className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                ) : (
+                  <ChevronUp className="w-5 h-5 text-gray-400 group-hover:text-gray-600" />
+                )}
+              </button>
+              {!instructionsCollapsed && (
+                <div className="py-3">
+                  <div className="space-y-3 text-sm text-gray-600">
+                    <p>Two ways to rank your criteria:</p>
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">1. Guided Ranking (beta)</h4>
+                        <p className="text-gray-600">
+                          Answer 10 questions about your needs to automatically determine optimal rankings.
+                          Click the "Guided Rankings" button above to start.
+                        </p>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 mb-1">2. Manual Ranking</h4>
+                        <p className="text-gray-600 mb-2">
+                          Directly set importance levels using the sliders below (1-5 scale). Use the help icon (?) next to each criterion for detailed descriptions and examples.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div 
+          className={`p-6 ${!isFullscreen && 'section-scroll'}`}
+        >
+          <DraggableList
+            items={criteria}
+            onReorder={onCriteriaChange}
+            renderItem={renderCriterion}
+            getItemId={(criterion) => criterion.id}
+          />
+        </div>
+        
+        <GuidedRankingForm
+          isOpen={isGuidedFormOpen}
+          onClose={() => setIsGuidedFormOpen(false)}
+          criteria={criteria}
+          onUpdateRankings={handleUpdateRankings}
+          onRealTimeUpdate={handleUpdateRankings}
         />
-      </div>
-      
-      <GuidedRankingForm
-        isOpen={isGuidedFormOpen}
-        onClose={() => setIsGuidedFormOpen(false)}
-        criteria={criteria}
-        onUpdateRankings={handleUpdateRankings}
-      />
       </div>
     </div>
   );

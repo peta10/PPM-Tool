@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ToolSection } from '@/features/tools/ToolSection';
 import { Header } from '@/components/layout/Header';
 import { StepsSection } from '@/components/layout/StepsSection';
+import { CTABanner } from '@/components/common/CTABanner';
 import { Tool, Criterion } from '@/shared/types';
 import { FilterCondition } from '@/components/filters/FilterSystem';
 import { useSteps } from '@/shared/contexts/StepContext';
@@ -93,6 +94,7 @@ export const ToolsPage: React.FC<ToolsPageProps> = ({
   return (
     <div className={`min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 ${isMobile ? 'pb-20' : ''}`}>
       <Header />
+      <CTABanner />
       <StepsSection />
       
       <main className="container mx-auto px-4 py-8">

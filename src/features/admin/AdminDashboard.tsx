@@ -7,6 +7,7 @@ import { AdminToolForm } from './AdminToolForm';
 import { Tool, Criterion } from '@/shared/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { Header } from '@/components/layout/Header';
+import { CTABanner } from '@/components/common/CTABanner';
 
 export const AdminDashboard: React.FC = () => {
   const [tools, setTools] = useState<Tool[]>([]);
@@ -179,6 +180,7 @@ export const AdminDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-100">
         <Header />
+        <CTABanner />
         <div className="container mx-auto px-4 py-8">
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-lg">
             Please sign in to access the admin dashboard.
@@ -191,6 +193,7 @@ export const AdminDashboard: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-100">
       <Header />
+      <CTABanner />
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Tool Management Dashboard</h1>
